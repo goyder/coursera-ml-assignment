@@ -1,0 +1,133 @@
+---
+title: "HAR-assignment"
+author: "Joshua Goyder"
+date: "6 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(caret)
+library(dplyr)
+library(UpSetR)
+library(tidyr)
+```
+
+## Introduction
+
+This document is submitted as part of the John Hopkins University Practical Machine Learning course. This document forms part of the prediction assignment.
+
+Within this assignment, a machine learning model is to be generated in order to predict the manner in which a subject carried out an exercise. As an input to this model, data from accelerometers will be utilised. This data has been sourced from the [a publicly available dataset](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har). 
+
+## Data
+
+### Download
+
+First, we source the data from the external location.
+
+```{r}
+if (!file.exists("data")) {
+  dir.create("data")
+}
+
+training_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testing_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+download.file(training_url, file.path("data", "training.csv"))
+download.file(testing_url, file.path("data", "testing.csv"))
+
+```
+
+### Exploration and cleaning - training dataset
+
+First, we'll read in the datasets, and conduct some basic investigations.
+
+```{r}
+df.training <- 
+  read.csv(file.path("data", "training.csv"), stringsAsFactors = F) 
+df.training <- df.training %>%
+  mutate(classe = as.factor(classe), user_name = as.factor(user_name), new_window = as.factor(new_window)) %>%
+  mutate_if(is.character, as.numeric)
+
+df.testing <- 
+  read.csv(file.path("data", "testing.csv"), stringsAsFactors = F) %>%
+  mutate(user_name = as.factor(user_name)) %>%
+  mutate_if(is.character, as.numeric)
+```
+
+We'll generate and examine the summary responses. The response will be hidden for the purposes of this written report due to their excessive length, but some brief summary information is presented below.
+
+```{r echo=T, results="hide"}
+str(df.training)
+str(df.testing)
+```
+
+```{r}
+df.training[((df.training["num_window"] == 440) & (df.training["new_window"] == 1)),]
+df.training[(df.training["num_window"] == 12) & (df.training["new_window"] == "yes"), ]
+```
+
+```{r}
+dim.df.training <- dim(df.training)
+rows <- dim.df.training[1]
+columns <- dim.df.training[2]
+print(paste("Number of columns:", columns))
+print(paste("Number of rows:", rows))
+```
+
+There are 160 columns within this dataset, representing a huge number of potential inputs to a machine learning model. 
+
+If we inspect these columns, we will find that a huge proportion of these columns are largely `NA`s. Reviewing the column names, we will see that these columns correspond to summary functions (mean, max, average, etc) of *windowed* measurements of some base variables. These windowed summaries may be useful predictors, according to the [paper accompanying this dataset](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf), and thus we will fill these `NA`s.
+
+While this is inefficient and redundant for memory and disk storage, it means that each observation (row) can stand-alone. To accomplish this, we will make use of the `dplyr::fill` function.
+
+```{r}
+summarised.colnames <- 
+  df.training %>%
+  select_if(function(x) (sum(is.na(x)) / length(x)) > 0.9 ) %>%
+  colnames()
+
+print(summarised.colnames)
+
+df.training.filled <- 
+  df.training %>%
+  fill(., summarised.colnames, .direction = "up")
+```
+
+With this fill applied, we will note that there are still some columns that are still full of NAs - these can now be removed as they are completely empty.
+
+```{r}
+df.training.filled %>%
+  select_if(function(x) any(is.na(x))) %>%
+  colnames
+```
+
+### Exploration and cleaning - test dataset
+
+The test dataset is in a similar condition, but cannot be filled with the `fill` function. Rather, we must fill these summarised values by matching the `num_window` column with the training dataset.
+
+```{r}
+summarised.colnames <-
+  df.testing %>%
+  select_if(function(x) (sum(is.na(x)) / length(x)) > 0.9) %>%
+  colnames()
+
+print(summarised.colnames)
+
+```
+
+next steps;
+fill in the test dataset
+produce some basic-ass models
+test the results
+
+## Model preparation
+
+## Analysis
+
+### Out of sample error
+
+## Testing
+
+
+
