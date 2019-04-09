@@ -2,14 +2,15 @@
 title: "HAR-assignment"
 author: "Joshua Goyder"
 date: "6 April 2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, cache=TRUE)
 library(caret)
 library(dplyr)
-library(UpSetR)
 library(tidyr)
 ```
 
@@ -63,8 +64,8 @@ str(df.testing)
 ```
 
 ```{r}
-df.training[((df.training["num_window"] == 440) & (df.training["new_window"] == 1)),]
-df.training[(df.training["num_window"] == 12) & (df.training["new_window"] == "yes"), ]
+# df.training[((df.training["num_window"] == 440) & (df.training["new_window"] == 1)),]
+# df.training[(df.training["num_window"] == 12) & (df.training["new_window"] == "yes"), ]
 ```
 
 ```{r}
@@ -87,8 +88,6 @@ summarised.colnames <-
   select_if(function(x) (sum(is.na(x)) / length(x)) > 0.9 ) %>%
   colnames()
 
-print(summarised.colnames)
-
 df.training.filled <- 
   df.training %>%
   fill(., summarised.colnames, .direction = "up")
@@ -97,10 +96,32 @@ df.training.filled <-
 With this fill applied, we will note that there are still some columns that are still full of NAs - these can now be removed as they are completely empty.
 
 ```{r}
-df.training.filled %>%
+empty.columns <- 
+  df.training.filled %>%
   select_if(function(x) any(is.na(x))) %>%
   colnames
+
+df.training.filled <- 
+  df.training.filled %>%
+  select(-one_of(empty.columns))
 ```
+
+Finally, we'll trim out some extraneous columns to create our final dataframe to train on.
+
+```{r}
+columns_to_ignore = c("raw_timestamp_part_1", "raw_timestamp_part_2", "X", "cvtd_timestamp", "new_window", "num_window", "skewness_roll_belt.1")
+
+df.training.samples <- df.training.filled %>%
+  select(-one_of(columns_to_ignore))
+
+final.colnames <- colnames(df.training.samples)
+```
+
+```{r}
+df.training.samples %>%
+  select_if(function(x) any(is.na(x)))
+```
+
 
 ### Exploration and cleaning - test dataset
 
@@ -110,18 +131,51 @@ The test dataset is in a similar condition, but cannot be filled with the `fill`
 summarised.colnames <-
   df.testing %>%
   select_if(function(x) (sum(is.na(x)) / length(x)) > 0.9) %>%
+  select(-cvtd_timestamp) %>%
+  select(-new_window) %>%
   colnames()
-
-print(summarised.colnames)
-
 ```
 
-next steps;
-fill in the test dataset
+```{r}
+# This is a horribly inefficient way to do this, but I'm as yet unable to figure out a 
+# smooth way to do it in dplyr.
+for (i in 1:nrow(df.testing)) {
+  window = df.testing[[i, "num_window"]]
+  for (colname in summarised.colnames) {
+    df.training.subset = df.training %>% filter(num_window == i)
+    df.testing[i, colname] = df.training.filled[1, colname]
+  }
+}
+```
+
+```{r}
+df.testing <- 
+  df.testing %>%
+  select(-one_of(empty.columns))
+```
+
+```{r}
+df.testing <-
+  df.testing %>%
+  select(one_of(c("X", final.colnames)))
+```
+
+```{r}
+df.testing %>%
+  select_if(function(x) any(is.na(x)))
+```
+
+
+Now, with a populated training dataset and a populated test dataset, we can proceed with our training.
+
 produce some basic-ass models
 test the results
 
 ## Model preparation
+
+As a first run, we'll use a random forest approach. We'll also run with a k-fold cross validation, k=10.
+
+
 
 ## Analysis
 
