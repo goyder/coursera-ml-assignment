@@ -3,12 +3,12 @@ title: "HAR-assignment"
 author: "Joshua Goyder"
 date: "6 April 2019"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, cache=TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, cache=F)
 library(caret)
 library(dplyr)
 library(tidyr)
@@ -20,7 +20,17 @@ This document is submitted as part of the John Hopkins University Practical Mach
 
 Within this assignment, a machine learning model is to be generated in order to predict the manner in which a subject carried out an exercise. As an input to this model, data from accelerometers will be utilised. This data has been sourced from the [a publicly available dataset](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har). 
 
+Within this document, we will explore two approaches to the modelling system. One will use just the bare-bone, raw features provided in both datasets - just over 50 in total. (This is still a relatively large number of features!) The second will utilise the summarised/aggregated features provided, bringing the number of features to over 140. We will compare performance of both models.
+
 ## Data
+
+The goal of the data preparation section is to:
+
+* Source the data
+* Clean out missing values and empty columns
+* Ensure that each row of the dataset is a full observation
+* Prepare a 'barebones' and 'full' training dataset
+* Prepare a clean testing dataset
 
 ### Download
 
@@ -34,9 +44,13 @@ if (!file.exists("data")) {
 training_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 testing_url <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 
-download.file(training_url, file.path("data", "training.csv"))
-download.file(testing_url, file.path("data", "testing.csv"))
-
+if (!file.exists(file.path("data", "training.csv"))) {
+  download.file(training_url, file.path("data", "training.csv"))
+}  
+ 
+if (!file.exists(file.path("data", "testing.csv"))) {
+  download.file(testing_url, file.path("data", "testing.csv"))
+} 
 ```
 
 ### Exploration and cleaning - training dataset
@@ -61,11 +75,6 @@ We'll generate and examine the summary responses. The response will be hidden fo
 ```{r echo=T, results="hide"}
 str(df.training)
 str(df.testing)
-```
-
-```{r}
-# df.training[((df.training["num_window"] == 440) & (df.training["new_window"] == 1)),]
-# df.training[(df.training["num_window"] == 12) & (df.training["new_window"] == "yes"), ]
 ```
 
 ```{r}
@@ -106,35 +115,46 @@ df.training.filled <-
   select(-one_of(empty.columns))
 ```
 
-Finally, we'll trim out some extraneous columns to create our final dataframe to train on.
+Finally, we'll trim out some extraneous columns to create our final dataframe to train on. The column we remove are not meaningful features.
 
 ```{r}
 columns_to_ignore = c("raw_timestamp_part_1", "raw_timestamp_part_2", "X", "cvtd_timestamp", "new_window", "num_window", "skewness_roll_belt.1")
 
-df.training.samples <- df.training.filled %>%
+df.training.final <- df.training.filled %>%
   select(-one_of(columns_to_ignore))
 
-final.colnames <- colnames(df.training.samples)
+final.colnames <- colnames(df.training.final)
 ```
 
+As a final sanity-check, we'll check if there are any NAs in the dataset.
+
 ```{r}
-df.training.samples %>%
+df.training.final %>%
   select_if(function(x) any(is.na(x)))
 ```
 
-
 ### Exploration and cleaning - test dataset
 
-The test dataset is in a similar condition, but cannot be filled with the `fill` function. Rather, we must fill these summarised values by matching the `num_window` column with the training dataset.
+The test dataset is in a similar condition, but cannot be filled with the `fill` function. Rather, we must fill these summarised values by matching the `num_window` column with the training dataset. Before we get there, we'll take a number of steps to clear out unnecessary or useless columns already identified.
+
+```{r}
+df.testing <- 
+  df.testing %>%
+  select(-one_of(empty.columns)) %>%
+  select(one_of(c("X", "num_window", final.colnames)))
+
+```
+
+Again, we'll identify which columns are mostly empty summary variables.
 
 ```{r}
 summarised.colnames <-
   df.testing %>%
   select_if(function(x) (sum(is.na(x)) / length(x)) > 0.9) %>%
-  select(-cvtd_timestamp) %>%
-  select(-new_window) %>%
   colnames()
 ```
+
+And run a nasty little inefficient loop to fill those in by indexing on the `num_window` feature.
 
 ```{r}
 # This is a horribly inefficient way to do this, but I'm as yet unable to figure out a 
@@ -142,46 +162,146 @@ summarised.colnames <-
 for (i in 1:nrow(df.testing)) {
   window = df.testing[[i, "num_window"]]
   for (colname in summarised.colnames) {
-    df.training.subset = df.training %>% filter(num_window == i)
-    df.testing[i, colname] = df.training.filled[1, colname]
+    df.training.subset <- df.training.filled %>% filter(num_window == i)
+    df.testing[i, colname] = df.training.subset[[1, colname]]
   }
 }
 ```
 
-```{r}
-df.testing <- 
-  df.testing %>%
-  select(-one_of(empty.columns))
-```
-
-```{r}
-df.testing <-
-  df.testing %>%
-  select(one_of(c("X", final.colnames)))
-```
-
-```{r}
-df.testing %>%
-  select_if(function(x) any(is.na(x)))
-```
-
-
 Now, with a populated training dataset and a populated test dataset, we can proceed with our training.
 
-produce some basic-ass models
-test the results
+### Barebones training dataset
+
+A useful output of the testing dataset preparation was the generation of the `summarised.colnames` column name list. This neatly lists any columns that are prepared via aggregation. To produce the `barebones` dataset, we'll use this to trim the `df.training.final` dataset.
+
+```{r}
+df.training.barebones <-
+  df.training.final %>%
+  select(-one_of(summarised.colnames))
+```
+
+We're now good to proceed to training.
 
 ## Model preparation
 
-As a first run, we'll use a random forest approach. We'll also run with a k-fold cross validation, k=10.
+Within this assessment, we'll use a random forest approach. The method will proceed as follows:
 
+1. Prepare a training control with k-fold cross validation, $k=5$. 
+2. Train a series of models using this training control, utilising increasing amounts of data from the `df.training.final` dataset (200, 1000, and 5000 samples). *Note*: the full dataset will not be used due to time and memory constraints associated with training such a large model.
+3. Assess model performance on the full training set.
+4. Train a series of models using the same training control, utilising increasing amounts of data from the `df.training.barebones` dataset (200, 1000, and 5000 samples). 
+5. Assess model performance on the full training set.
+6. Compare the best performing models trained on the `df.training.barebones` and `df.training.final` datasets on the test dataset and ascertain if there are differences in performance.
 
+### Prepare training control
 
-## Analysis
+The `train_control` object is created with `caret`.
 
-### Out of sample error
+```{r}
+train_control <- trainControl(method="cv", number=5)
+```
 
-## Testing
+### Prepare and assess models with `df.training.final` dataset
 
+We will use the `sample` function to feed into increasing amounts of data. 
 
+```{r cache=TRUE}
+set.seed(123)
+small.model.final <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 200), ], trControl=train_control, method="rf")
+medium.model.final <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 1000), ], trControl=train_control, method="rf")
+large.model.final <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 5000), ], trControl=train_control, method="rf")
+```
 
+#### Assessing model performance
+
+We will assess the performance of the models in two ways: first, by evaluating the basic output of the training jobs (which will give the results from the k-fold evluation process) and then by comparing on the whole training dataset (in effect, testing on $19622 - 5000$ new samples).
+
+First, evaluating results from the model objects:
+
+```{r}
+print(small.model.final)
+print(medium.model.final)
+print(large.model.final)
+```
+
+Then, assessing the performance on the rest of the training data, running from small to large:
+
+```{r}
+for (model in list(small.model.final, medium.model.final, large.model.final)) {
+  prediction <- predict(model, newdata=df.training.final)
+  accuracy = sum(prediction == df.training.final$classe) / nrow(df.training.final)
+  print(accuracy)
+}
+```
+
+### Prepare and assess models with `df.training.barebones` dataset
+
+We now repeat the above training process with the `barebones` dataset - this features a great deal less features to train upon.
+
+We will use the `sample` function to feed into increasing amounts of data. 
+
+```{r cache=TRUE}
+set.seed(123)
+small.model.barebones <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 200), ], trControl=train_control, method="rf")
+medium.model.barebones <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 1000), ], trControl=train_control, method="rf")
+large.model.barebones <- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 5000), ], trControl=train_control, method="rf")
+```
+
+#### Assessing model performance
+
+We will assess the performance of the models in two ways: first, by evaluating the basic output of the training jobs (which will give the results from the k-fold evluation process) and then by comparing on the whole training dataset (in effect, testing on $19622 - 5000$ new samples).
+
+First, evaluating results from the model objects:
+
+```{r}
+print(small.model.barebones)
+print(medium.model.barebones)
+print(large.model.barebones)
+```
+
+Then, assessing the performance on the rest of the training data, running from small to large:
+
+```{r}
+for (model in list(small.model.barebones, medium.model.barebones, large.model.barebones)) {
+  prediction <- predict(model, newdata=df.training.barebones)
+  accuracy = sum(prediction == df.training.barebones$classe) / nrow(df.training.barebones)
+  print(accuracy)
+}
+```
+
+### Analysis
+
+We report exceedingly high accuracy on both the k-fold training process and on the overall training process - in the high-90s for the `large` datasets in both instances. Based on this, we might expect:
+
+* Benefits from training on additional samples would probably not be worth the computational effort
+* Testing dataset results would be more or less identical - which is to say, both correct
+
+We will now test the second 'hypothesis'.
+
+## Predict on testing data
+
+We will use the `large.model` trained on both these datasets on the `df.testing` dataset and compare results.
+
+```{r}
+test.prediction.final <- predict(large.model.final, newdata=df.testing)
+test.prediction.barebones <- predict(large.model.barebones, newdata=df.testing)
+print("Results from `df.training.final` model:")
+print(test.prediction.final)
+print("Results from `df.training.barebones` model:")
+print(test.prediction.barebones)
+```
+
+Somewhat counter-intuitively, we have very different results for these two models! Despite both having exceedingly high accuracy on the training dataset, they've performed very differently on test dataset. 
+
+Which one do we trust? While it's tempting to run with `df.training.final` - after all, it's built on more features and more data - we're better off to run with the models built on `df.training.barebones`, as:
+
+* Using more features is more likely to make our model overly complex and overfit if we're getting the same accuracy
+* It's possible we've interpolated the summarised features in `df.testing` wrong: why use data we may have overcooked?
+
+### Results
+
+When we submit the results to the Coursera quiz, we find that the `large.model.barebones` performs better. It is a fair to believe that `large.model.final` is overfit, or the summarised features of the `df.testing` dataset was incorrectly populated.
+
+## Conclusion
+
+In this analysis, we assembled and cleaned a training and testing dataset and prepared a number of models using different volumes of sample data and features. It was found that increasing volumes of samples lead to high training and validation accuracy, but utilising all possible features lead to an situation where the model was overfit or testing data incorrectly populated.

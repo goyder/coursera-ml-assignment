@@ -195,9 +195,18 @@ $(document).ready(function () {
 <h2>Introduction</h2>
 <p>This document is submitted as part of the John Hopkins University Practical Machine Learning course. This document forms part of the prediction assignment.</p>
 <p>Within this assignment, a machine learning model is to be generated in order to predict the manner in which a subject carried out an exercise. As an input to this model, data from accelerometers will be utilised. This data has been sourced from the <a href="http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har">a publicly available dataset</a>.</p>
+<p>Within this document, we will explore two approaches to the modelling system. One will use just the bare-bone, raw features provided in both datasets - just over 50 in total. (This is still a relatively large number of features!) The second will utilise the summarised/aggregated features provided, bringing the number of features to over 140. We will compare performance of both models.</p>
 </div>
 <div id="data" class="section level2">
 <h2>Data</h2>
+<p>The goal of the data preparation section is to:</p>
+<ul>
+<li>Source the data</li>
+<li>Clean out missing values and empty columns</li>
+<li>Ensure that each row of the dataset is a full observation</li>
+<li>Prepare a ‘barebones’ and ‘full’ training dataset</li>
+<li>Prepare a clean testing dataset</li>
+</ul>
 <div id="download" class="section level3">
 <h3>Download</h3>
 <p>First, we source the data from the external location.</p>
@@ -208,98 +217,27 @@ $(document).ready(function () {
 training_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv&quot;
 testing_url &lt;- &quot;https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv&quot;
 
-download.file(training_url, file.path(&quot;data&quot;, &quot;training.csv&quot;))
-download.file(testing_url, file.path(&quot;data&quot;, &quot;testing.csv&quot;))</code></pre>
+if (!file.exists(file.path(&quot;data&quot;, &quot;training.csv&quot;))) {
+  download.file(training_url, file.path(&quot;data&quot;, &quot;training.csv&quot;))
+}  
+ 
+if (!file.exists(file.path(&quot;data&quot;, &quot;testing.csv&quot;))) {
+  download.file(testing_url, file.path(&quot;data&quot;, &quot;testing.csv&quot;))
+} </code></pre>
 </div>
-<div id="exploration-and-cleaning" class="section level3">
-<h3>Exploration and cleaning</h3>
+<div id="exploration-and-cleaning---training-dataset" class="section level3">
+<h3>Exploration and cleaning - training dataset</h3>
 <p>First, we’ll read in the datasets, and conduct some basic investigations.</p>
 <pre class="r"><code>df.training &lt;- 
   read.csv(file.path(&quot;data&quot;, &quot;training.csv&quot;), stringsAsFactors = F) 
-df.training &lt;-  df.training %&gt;%
-  mutate(classe = as.factor(classe)) %&gt;%
-  mutate_if(is.character, as.numeric)</code></pre>
-<pre><code>## Warning in evalq(as.numeric(user_name), &lt;environment&gt;): NAs introduced by
-## coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(cvtd_timestamp), &lt;environment&gt;): NAs introduced
-## by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(new_window), &lt;environment&gt;): NAs introduced by
-## coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_roll_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_picth_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_yaw_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_roll_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_roll_belt.1), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_yaw_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(max_yaw_belt), &lt;environment&gt;): NAs introduced
-## by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(min_yaw_belt), &lt;environment&gt;): NAs introduced
-## by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(amplitude_yaw_belt), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_roll_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_picth_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_yaw_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_roll_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_pitch_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_yaw_arm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_roll_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_picth_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_yaw_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_roll_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_pitch_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_yaw_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(max_yaw_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(min_yaw_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(amplitude_yaw_dumbbell), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_roll_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_picth_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(kurtosis_yaw_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_roll_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_pitch_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(skewness_yaw_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(max_yaw_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(min_yaw_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(amplitude_yaw_forearm), &lt;environment&gt;): NAs
-## introduced by coercion</code></pre>
-<pre class="r"><code>df.testing &lt;- 
+df.training &lt;- df.training %&gt;%
+  mutate(classe = as.factor(classe), user_name = as.factor(user_name), new_window = as.factor(new_window)) %&gt;%
+  mutate_if(is.character, as.numeric)
+
+df.testing &lt;- 
   read.csv(file.path(&quot;data&quot;, &quot;testing.csv&quot;), stringsAsFactors = F) %&gt;%
+  mutate(user_name = as.factor(user_name)) %&gt;%
   mutate_if(is.character, as.numeric)</code></pre>
-<pre><code>## Warning in evalq(as.numeric(user_name), &lt;environment&gt;): NAs introduced by
-## coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(cvtd_timestamp), &lt;environment&gt;): NAs introduced
-## by coercion</code></pre>
-<pre><code>## Warning in evalq(as.numeric(new_window), &lt;environment&gt;): NAs introduced by
-## coercion</code></pre>
 <p>We’ll generate and examine the summary responses. The response will be hidden for the purposes of this written report due to their excessive length, but some brief summary information is presented below.</p>
 <pre class="r"><code>str(df.training)
 str(df.testing)</code></pre>
@@ -318,668 +256,277 @@ print(paste(&quot;Number of columns:&quot;, columns))</code></pre>
   select_if(function(x) (sum(is.na(x)) / length(x)) &gt; 0.9 ) %&gt;%
   colnames()
 
-print(summarised.colnames)</code></pre>
-<pre><code>##   [1] &quot;user_name&quot;                &quot;cvtd_timestamp&quot;          
-##   [3] &quot;new_window&quot;               &quot;kurtosis_roll_belt&quot;      
-##   [5] &quot;kurtosis_picth_belt&quot;      &quot;kurtosis_yaw_belt&quot;       
-##   [7] &quot;skewness_roll_belt&quot;       &quot;skewness_roll_belt.1&quot;    
-##   [9] &quot;skewness_yaw_belt&quot;        &quot;max_roll_belt&quot;           
-##  [11] &quot;max_picth_belt&quot;           &quot;max_yaw_belt&quot;            
-##  [13] &quot;min_roll_belt&quot;            &quot;min_pitch_belt&quot;          
-##  [15] &quot;min_yaw_belt&quot;             &quot;amplitude_roll_belt&quot;     
-##  [17] &quot;amplitude_pitch_belt&quot;     &quot;amplitude_yaw_belt&quot;      
-##  [19] &quot;var_total_accel_belt&quot;     &quot;avg_roll_belt&quot;           
-##  [21] &quot;stddev_roll_belt&quot;         &quot;var_roll_belt&quot;           
-##  [23] &quot;avg_pitch_belt&quot;           &quot;stddev_pitch_belt&quot;       
-##  [25] &quot;var_pitch_belt&quot;           &quot;avg_yaw_belt&quot;            
-##  [27] &quot;stddev_yaw_belt&quot;          &quot;var_yaw_belt&quot;            
-##  [29] &quot;var_accel_arm&quot;            &quot;avg_roll_arm&quot;            
-##  [31] &quot;stddev_roll_arm&quot;          &quot;var_roll_arm&quot;            
-##  [33] &quot;avg_pitch_arm&quot;            &quot;stddev_pitch_arm&quot;        
-##  [35] &quot;var_pitch_arm&quot;            &quot;avg_yaw_arm&quot;             
-##  [37] &quot;stddev_yaw_arm&quot;           &quot;var_yaw_arm&quot;             
-##  [39] &quot;kurtosis_roll_arm&quot;        &quot;kurtosis_picth_arm&quot;      
-##  [41] &quot;kurtosis_yaw_arm&quot;         &quot;skewness_roll_arm&quot;       
-##  [43] &quot;skewness_pitch_arm&quot;       &quot;skewness_yaw_arm&quot;        
-##  [45] &quot;max_roll_arm&quot;             &quot;max_picth_arm&quot;           
-##  [47] &quot;max_yaw_arm&quot;              &quot;min_roll_arm&quot;            
-##  [49] &quot;min_pitch_arm&quot;            &quot;min_yaw_arm&quot;             
-##  [51] &quot;amplitude_roll_arm&quot;       &quot;amplitude_pitch_arm&quot;     
-##  [53] &quot;amplitude_yaw_arm&quot;        &quot;kurtosis_roll_dumbbell&quot;  
-##  [55] &quot;kurtosis_picth_dumbbell&quot;  &quot;kurtosis_yaw_dumbbell&quot;   
-##  [57] &quot;skewness_roll_dumbbell&quot;   &quot;skewness_pitch_dumbbell&quot; 
-##  [59] &quot;skewness_yaw_dumbbell&quot;    &quot;max_roll_dumbbell&quot;       
-##  [61] &quot;max_picth_dumbbell&quot;       &quot;max_yaw_dumbbell&quot;        
-##  [63] &quot;min_roll_dumbbell&quot;        &quot;min_pitch_dumbbell&quot;      
-##  [65] &quot;min_yaw_dumbbell&quot;         &quot;amplitude_roll_dumbbell&quot; 
-##  [67] &quot;amplitude_pitch_dumbbell&quot; &quot;amplitude_yaw_dumbbell&quot;  
-##  [69] &quot;var_accel_dumbbell&quot;       &quot;avg_roll_dumbbell&quot;       
-##  [71] &quot;stddev_roll_dumbbell&quot;     &quot;var_roll_dumbbell&quot;       
-##  [73] &quot;avg_pitch_dumbbell&quot;       &quot;stddev_pitch_dumbbell&quot;   
-##  [75] &quot;var_pitch_dumbbell&quot;       &quot;avg_yaw_dumbbell&quot;        
-##  [77] &quot;stddev_yaw_dumbbell&quot;      &quot;var_yaw_dumbbell&quot;        
-##  [79] &quot;kurtosis_roll_forearm&quot;    &quot;kurtosis_picth_forearm&quot;  
-##  [81] &quot;kurtosis_yaw_forearm&quot;     &quot;skewness_roll_forearm&quot;   
-##  [83] &quot;skewness_pitch_forearm&quot;   &quot;skewness_yaw_forearm&quot;    
-##  [85] &quot;max_roll_forearm&quot;         &quot;max_picth_forearm&quot;       
-##  [87] &quot;max_yaw_forearm&quot;          &quot;min_roll_forearm&quot;        
-##  [89] &quot;min_pitch_forearm&quot;        &quot;min_yaw_forearm&quot;         
-##  [91] &quot;amplitude_roll_forearm&quot;   &quot;amplitude_pitch_forearm&quot; 
-##  [93] &quot;amplitude_yaw_forearm&quot;    &quot;var_accel_forearm&quot;       
-##  [95] &quot;avg_roll_forearm&quot;         &quot;stddev_roll_forearm&quot;     
-##  [97] &quot;var_roll_forearm&quot;         &quot;avg_pitch_forearm&quot;       
-##  [99] &quot;stddev_pitch_forearm&quot;     &quot;var_pitch_forearm&quot;       
-## [101] &quot;avg_yaw_forearm&quot;          &quot;stddev_yaw_forearm&quot;      
-## [103] &quot;var_yaw_forearm&quot;</code></pre>
-<pre class="r"><code>df.training.filled &lt;- 
+df.training.filled &lt;- 
   df.training %&gt;%
   fill(., summarised.colnames, .direction = &quot;up&quot;)</code></pre>
-<p>With this fill applied, we will note that there are still some columns that are still full of NAs - these can now be removed as they are fully empty.</p>
-<pre class="r"><code>df.training.filled %&gt;%
+<p>With this fill applied, we will note that there are still some columns that are still full of NAs - these can now be removed as they are completely empty.</p>
+<pre class="r"><code>empty.columns &lt;- 
+  df.training.filled %&gt;%
   select_if(function(x) any(is.na(x))) %&gt;%
-  colnames</code></pre>
-<pre><code>##  [1] &quot;user_name&quot;              &quot;cvtd_timestamp&quot;        
-##  [3] &quot;new_window&quot;             &quot;kurtosis_yaw_belt&quot;     
-##  [5] &quot;skewness_yaw_belt&quot;      &quot;kurtosis_yaw_dumbbell&quot; 
-##  [7] &quot;skewness_yaw_dumbbell&quot;  &quot;kurtosis_roll_forearm&quot; 
-##  [9] &quot;kurtosis_picth_forearm&quot; &quot;kurtosis_yaw_forearm&quot;  
-## [11] &quot;skewness_roll_forearm&quot;  &quot;skewness_pitch_forearm&quot;
-## [13] &quot;skewness_yaw_forearm&quot;   &quot;max_yaw_forearm&quot;       
-## [15] &quot;min_yaw_forearm&quot;        &quot;amplitude_yaw_forearm&quot;</code></pre>
-<pre class="r"><code>df.training.filled$classe</code></pre>
-<pre><code>##     [1] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##    [35] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##    [69] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [103] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [137] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [171] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [205] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [239] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [273] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [307] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [341] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [375] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [409] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [443] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [477] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [511] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [545] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [579] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [613] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [647] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [681] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [715] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [749] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [783] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [817] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [851] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [885] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [919] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [953] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##   [987] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1021] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1055] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1089] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1123] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1157] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1191] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1225] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1259] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1293] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1327] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1361] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1395] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1429] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1463] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1497] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1531] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1565] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1599] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1633] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1667] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1701] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1735] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1769] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1803] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1837] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1871] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1905] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1939] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [1973] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2007] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2041] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2075] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2109] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2143] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2177] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2211] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2245] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2279] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2313] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2347] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2381] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2415] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2449] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2483] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2517] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2551] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2585] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2619] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2653] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2687] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2721] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2755] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2789] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2823] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2857] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2891] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2925] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2959] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [2993] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3027] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3061] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3095] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3129] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3163] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3197] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3231] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3265] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3299] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3333] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3367] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3401] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3435] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3469] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3503] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3537] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3571] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3605] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3639] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3673] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3707] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3741] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3775] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3809] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3843] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3877] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3911] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3945] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [3979] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4013] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4047] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4081] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4115] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4149] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4183] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4217] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4251] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4285] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4319] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4353] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4387] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4421] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4455] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4489] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4523] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4557] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4591] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4625] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4659] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4693] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4727] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4761] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4795] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4829] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4863] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4897] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4931] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4965] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [4999] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5033] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5067] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5101] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5135] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5169] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5203] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5237] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5271] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5305] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5339] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5373] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5407] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5441] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5475] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5509] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5543] A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A A
-##  [5577] A A A A B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5611] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5645] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5679] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5713] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5747] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5781] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5815] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5849] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5883] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5917] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5951] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [5985] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6019] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6053] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6087] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6121] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6155] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6189] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6223] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6257] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6291] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6325] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6359] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6393] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6427] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6461] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6495] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6529] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6563] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6597] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6631] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6665] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6699] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6733] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6767] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6801] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6835] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6869] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6903] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6937] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [6971] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7005] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7039] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7073] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7107] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7141] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7175] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7209] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7243] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7277] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7311] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7345] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7379] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7413] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7447] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7481] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7515] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7549] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7583] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7617] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7651] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7685] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7719] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7753] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7787] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7821] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7855] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7889] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7923] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7957] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [7991] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8025] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8059] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8093] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8127] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8161] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8195] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8229] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8263] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8297] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8331] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8365] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8399] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8433] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8467] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8501] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8535] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8569] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8603] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8637] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8671] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8705] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8739] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8773] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8807] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8841] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8875] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8909] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8943] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [8977] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9011] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9045] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9079] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9113] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9147] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9181] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9215] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9249] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9283] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9317] B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
-##  [9351] B B B B B B B B B B B B B B B B B B B B B B B B B B B C C C C C C C
-##  [9385] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9419] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9453] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9487] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9521] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9555] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9589] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9623] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9657] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9691] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9725] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9759] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9793] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9827] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9861] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9895] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9929] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9963] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-##  [9997] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10031] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10065] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10099] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10133] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10167] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10201] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10235] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10269] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10303] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10337] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10371] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10405] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10439] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10473] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10507] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10541] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10575] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10609] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10643] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10677] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10711] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10745] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10779] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10813] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10847] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10881] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10915] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10949] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [10983] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11017] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11051] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11085] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11119] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11153] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11187] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11221] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11255] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11289] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11323] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11357] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11391] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11425] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11459] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11493] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11527] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11561] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11595] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11629] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11663] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11697] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11731] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11765] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11799] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11833] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11867] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11901] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11935] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [11969] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12003] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12037] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12071] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12105] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12139] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12173] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12207] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12241] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12275] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12309] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12343] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12377] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12411] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12445] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12479] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12513] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12547] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12581] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12615] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12649] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12683] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12717] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12751] C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C C
-## [12785] C C C C C C C C C C C C C C C D D D D D D D D D D D D D D D D D D D
-## [12819] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [12853] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [12887] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [12921] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [12955] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [12989] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13023] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13057] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13091] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13125] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13159] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13193] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13227] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13261] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13295] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13329] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13363] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13397] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13431] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13465] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13499] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13533] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13567] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13601] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13635] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13669] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13703] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13737] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13771] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13805] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13839] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13873] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13907] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13941] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [13975] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14009] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14043] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14077] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14111] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14145] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14179] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14213] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14247] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14281] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14315] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14349] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14383] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14417] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14451] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14485] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14519] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14553] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14587] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14621] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14655] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14689] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14723] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14757] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14791] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14825] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14859] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14893] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14927] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14961] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [14995] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15029] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15063] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15097] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15131] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15165] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15199] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15233] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15267] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15301] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15335] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15369] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15403] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15437] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15471] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15505] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15539] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15573] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15607] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15641] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15675] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15709] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15743] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15777] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15811] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15845] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15879] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15913] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15947] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [15981] D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D D
-## [16015] D E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16049] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16083] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16117] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16151] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16185] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16219] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16253] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16287] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16321] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16355] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16389] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16423] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16457] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16491] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16525] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16559] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16593] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16627] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16661] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16695] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16729] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16763] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16797] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16831] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16865] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16899] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16933] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [16967] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17001] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17035] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17069] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17103] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17137] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17171] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17205] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17239] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17273] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17307] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17341] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17375] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17409] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17443] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17477] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17511] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17545] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17579] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17613] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17647] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17681] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17715] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17749] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17783] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17817] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17851] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17885] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17919] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17953] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [17987] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18021] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18055] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18089] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18123] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18157] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18191] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18225] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18259] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18293] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18327] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18361] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18395] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18429] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18463] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18497] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18531] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18565] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18599] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18633] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18667] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18701] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18735] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18769] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18803] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18837] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18871] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18905] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18939] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [18973] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19007] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19041] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19075] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19109] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19143] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19177] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19211] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19245] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19279] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19313] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19347] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19381] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19415] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19449] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19483] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19517] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19551] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19585] E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E E
-## [19619] E E E E
-## Levels: A B C D E</code></pre>
-<p>next steps; fill in the test dataset produce some basic-ass models test the results</p>
+  colnames
+
+df.training.filled &lt;- 
+  df.training.filled %&gt;%
+  select(-one_of(empty.columns))</code></pre>
+<p>Finally, we’ll trim out some extraneous columns to create our final dataframe to train on. The column we remove are not meaningful features.</p>
+<pre class="r"><code>columns_to_ignore = c(&quot;raw_timestamp_part_1&quot;, &quot;raw_timestamp_part_2&quot;, &quot;X&quot;, &quot;cvtd_timestamp&quot;, &quot;new_window&quot;, &quot;num_window&quot;, &quot;skewness_roll_belt.1&quot;)
+
+df.training.final &lt;- df.training.filled %&gt;%
+  select(-one_of(columns_to_ignore))
+
+final.colnames &lt;- colnames(df.training.final)</code></pre>
+<p>As a final sanity-check, we’ll check if there are any NAs in the dataset.</p>
+<pre class="r"><code>df.training.final %&gt;%
+  select_if(function(x) any(is.na(x)))</code></pre>
+<pre><code>## data frame with 0 columns and 19622 rows</code></pre>
+</div>
+<div id="exploration-and-cleaning---test-dataset" class="section level3">
+<h3>Exploration and cleaning - test dataset</h3>
+<p>The test dataset is in a similar condition, but cannot be filled with the <code>fill</code> function. Rather, we must fill these summarised values by matching the <code>num_window</code> column with the training dataset. Before we get there, we’ll take a number of steps to clear out unnecessary or useless columns already identified.</p>
+<pre class="r"><code>df.testing &lt;- 
+  df.testing %&gt;%
+  select(-one_of(empty.columns)) %&gt;%
+  select(one_of(c(&quot;X&quot;, &quot;num_window&quot;, final.colnames)))</code></pre>
+<p>Again, we’ll identify which columns are mostly empty summary variables.</p>
+<pre class="r"><code>summarised.colnames &lt;-
+  df.testing %&gt;%
+  select_if(function(x) (sum(is.na(x)) / length(x)) &gt; 0.9) %&gt;%
+  colnames()</code></pre>
+<p>And run a nasty little inefficient loop to fill those in by indexing on the <code>num_window</code> feature.</p>
+<pre class="r"><code># This is a horribly inefficient way to do this, but I'm as yet unable to figure out a 
+# smooth way to do it in dplyr.
+for (i in 1:nrow(df.testing)) {
+  window = df.testing[[i, &quot;num_window&quot;]]
+  for (colname in summarised.colnames) {
+    df.training.subset &lt;- df.training.filled %&gt;% filter(num_window == i)
+    df.testing[i, colname] = df.training.subset[[1, colname]]
+  }
+}</code></pre>
+<p>Now, with a populated training dataset and a populated test dataset, we can proceed with our training.</p>
+</div>
+<div id="barebones-training-dataset" class="section level3">
+<h3>Barebones training dataset</h3>
+<p>A useful output of the testing dataset preparation was the generation of the <code>summarised.colnames</code> column name list. This neatly lists any columns that are prepared via aggregation. To produce the <code>barebones</code> dataset, we’ll use this to trim the <code>df.training.final</code> dataset.</p>
+<pre class="r"><code>df.training.barebones &lt;-
+  df.training.final %&gt;%
+  select(-one_of(summarised.colnames))</code></pre>
+<p>We’re now good to proceed to training.</p>
 </div>
 </div>
 <div id="model-preparation" class="section level2">
 <h2>Model preparation</h2>
+<p>Within this assessment, we’ll use a random forest approach. The method will proceed as follows:</p>
+<ol style="list-style-type: decimal">
+<li>Prepare a training control with k-fold cross validation, <span class="math inline">\(k=5\)</span>.</li>
+<li>Train a series of models using this training control, utilising increasing amounts of data from the <code>df.training.final</code> dataset (200, 1000, and 5000 samples). <em>Note</em>: the full dataset will not be used due to time and memory constraints associated with training such a large model.</li>
+<li>Assess model performance on the full training set.</li>
+<li>Train a series of models using the same training control, utilising increasing amounts of data from the <code>df.training.barebones</code> dataset (200, 1000, and 5000 samples).</li>
+<li>Assess model performance on the full training set.</li>
+<li>Compare the best performing models trained on the <code>df.training.barebones</code> and <code>df.training.final</code> datasets on the test dataset and ascertain if there are differences in performance.</li>
+</ol>
+<div id="prepare-training-control" class="section level3">
+<h3>Prepare training control</h3>
+<p>The <code>train_control</code> object is created with <code>caret</code>.</p>
+<pre class="r"><code>train_control &lt;- trainControl(method=&quot;cv&quot;, number=5)</code></pre>
 </div>
-<div id="analysis" class="section level2">
-<h2>Analysis</h2>
-<div id="out-of-sample-error" class="section level3">
-<h3>Out of sample error</h3>
+<div id="prepare-and-assess-models-with-df.training.final-dataset" class="section level3">
+<h3>Prepare and assess models with <code>df.training.final</code> dataset</h3>
+<p>We will use the <code>sample</code> function to feed into increasing amounts of data.</p>
+<pre class="r"><code>set.seed(123)
+small.model.final &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 200), ], trControl=train_control, method=&quot;rf&quot;)
+medium.model.final &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 1000), ], trControl=train_control, method=&quot;rf&quot;)
+large.model.final &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.final), 5000), ], trControl=train_control, method=&quot;rf&quot;)</code></pre>
+<div id="assessing-model-performance" class="section level4">
+<h4>Assessing model performance</h4>
+<p>We will assess the performance of the models in two ways: first, by evaluating the basic output of the training jobs (which will give the results from the k-fold evluation process) and then by comparing on the whole training dataset (in effect, testing on <span class="math inline">\(19622 - 5000\)</span> new samples).</p>
+<p>First, evaluating results from the model objects:</p>
+<pre class="r"><code>print(small.model.final)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 200 samples
+##  53 predictor
+##   5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 160, 159, 160, 160, 161 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.6397842  0.5323271
+##   29    0.6545403  0.5544370
+##   57    0.6392777  0.5355983
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<pre class="r"><code>print(medium.model.final)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 1000 samples
+##   53 predictor
+##    5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 800, 801, 798, 802, 799 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.8739537  0.8398836
+##   29    0.8898743  0.8600964
+##   57    0.8828991  0.8513175
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<pre class="r"><code>print(large.model.final)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 5000 samples
+##   53 predictor
+##    5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 4001, 4000, 3999, 4000, 4000 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9690014  0.9606850
+##   29    0.9706020  0.9627269
+##   57    0.9664034  0.9574101
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<p>Then, assessing the performance on the rest of the training data, running from small to large:</p>
+<pre class="r"><code>for (model in list(small.model.final, medium.model.final, large.model.final)) {
+  prediction &lt;- predict(model, newdata=df.training.final)
+  accuracy = sum(prediction == df.training.final$classe) / nrow(df.training.final)
+  print(accuracy)
+}</code></pre>
+<pre><code>## [1] 0.706401
+## [1] 0.9204464
+## [1] 0.9840995</code></pre>
 </div>
 </div>
-<div id="testing" class="section level2">
-<h2>Testing</h2>
+<div id="prepare-and-assess-models-with-df.training.barebones-dataset" class="section level3">
+<h3>Prepare and assess models with <code>df.training.barebones</code> dataset</h3>
+<p>We now repeat the above training process with the <code>barebones</code> dataset - this features a great deal less features to train upon.</p>
+<p>We will use the <code>sample</code> function to feed into increasing amounts of data.</p>
+<pre class="r"><code>set.seed(123)
+small.model.barebones &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 200), ], trControl=train_control, method=&quot;rf&quot;)
+medium.model.barebones &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 1000), ], trControl=train_control, method=&quot;rf&quot;)
+large.model.barebones &lt;- train(classe ~ ., data=df.training.barebones[sample(nrow(df.training.barebones), 5000), ], trControl=train_control, method=&quot;rf&quot;)</code></pre>
+<div id="assessing-model-performance-1" class="section level4">
+<h4>Assessing model performance</h4>
+<p>We will assess the performance of the models in two ways: first, by evaluating the basic output of the training jobs (which will give the results from the k-fold evluation process) and then by comparing on the whole training dataset (in effect, testing on <span class="math inline">\(19622 - 5000\)</span> new samples).</p>
+<p>First, evaluating results from the model objects:</p>
+<pre class="r"><code>print(small.model.barebones)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 200 samples
+##  53 predictor
+##   5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 160, 159, 160, 160, 161 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.6397842  0.5323271
+##   29    0.6545403  0.5544370
+##   57    0.6392777  0.5355983
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<pre class="r"><code>print(medium.model.barebones)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 1000 samples
+##   53 predictor
+##    5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 800, 801, 798, 802, 799 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.8739537  0.8398836
+##   29    0.8898743  0.8600964
+##   57    0.8828991  0.8513175
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<pre class="r"><code>print(large.model.barebones)</code></pre>
+<pre><code>## Random Forest 
+## 
+## 5000 samples
+##   53 predictor
+##    5 classes: 'A', 'B', 'C', 'D', 'E' 
+## 
+## No pre-processing
+## Resampling: Cross-Validated (5 fold) 
+## Summary of sample sizes: 4001, 4000, 3999, 4000, 4000 
+## Resampling results across tuning parameters:
+## 
+##   mtry  Accuracy   Kappa    
+##    2    0.9690014  0.9606850
+##   29    0.9706020  0.9627269
+##   57    0.9664034  0.9574101
+## 
+## Accuracy was used to select the optimal model using the largest value.
+## The final value used for the model was mtry = 29.</code></pre>
+<p>Then, assessing the performance on the rest of the training data, running from small to large:</p>
+<pre class="r"><code>for (model in list(small.model.barebones, medium.model.barebones, large.model.barebones)) {
+  prediction &lt;- predict(model, newdata=df.training.barebones)
+  accuracy = sum(prediction == df.training.barebones$classe) / nrow(df.training.barebones)
+  print(accuracy)
+}</code></pre>
+<pre><code>## [1] 0.706401
+## [1] 0.9204464
+## [1] 0.9840995</code></pre>
+</div>
+</div>
+<div id="analysis" class="section level3">
+<h3>Analysis</h3>
+<p>We report exceedingly high accuracy on both the k-fold training process and on the overall training process - in the high-90s for the <code>large</code> datasets in both instances. Based on this, we might expect:</p>
+<ul>
+<li>Benefits from training on additional samples would probably not be worth the computational effort</li>
+<li>Testing dataset results would be more or less identical - which is to say, both correct</li>
+</ul>
+<p>We will now test the second ‘hypothesis’.</p>
+</div>
+</div>
+<div id="predict-on-testing-data" class="section level2">
+<h2>Predict on testing data</h2>
+<p>We will use the <code>large.model</code> trained on both these datasets on the <code>df.testing</code> dataset and compare results.</p>
+<pre class="r"><code>test.prediction.final &lt;- predict(large.model.final, newdata=df.testing)
+test.prediction.barebones &lt;- predict(large.model.barebones, newdata=df.testing)
+print(&quot;Results from `df.training.final` model:&quot;)</code></pre>
+<pre><code>## [1] &quot;Results from `df.training.final` model:&quot;</code></pre>
+<pre class="r"><code>print(test.prediction.final)</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<pre class="r"><code>print(&quot;Results from `df.training.barebones` model:&quot;)</code></pre>
+<pre><code>## [1] &quot;Results from `df.training.barebones` model:&quot;</code></pre>
+<pre class="r"><code>print(test.prediction.barebones)</code></pre>
+<pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<p>Somewhat counter-intuitively, we have very different results for these two models! Despite both having exceedingly high accuracy on the training dataset, they’ve performed very differently on test dataset.</p>
+<p>Which one do we trust? While it’s tempting to run with <code>df.training.final</code> - after all, it’s built on more features and more data - we’re better off to run with the models built on <code>df.training.barebones</code>, as:</p>
+<ul>
+<li>Using more features is more likely to make our model overly complex and overfit if we’re getting the same accuracy</li>
+<li>It’s possible we’ve interpolated the summarised features in <code>df.testing</code> wrong: why use data we may have overcooked?</li>
+</ul>
+<div id="results" class="section level3">
+<h3>Results</h3>
+<p>When we submit the results to the Coursera quiz, we find that the <code>large.model.barebones</code> performs better. It is a fair to believe that <code>large.model.final</code> is overfit, or the summarised features of the <code>df.testing</code> dataset was incorrectly populated.</p>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>In this analysis, we assembled and cleaned a training and testing dataset and prepared a number of models using different volumes of sample data and features. It was found that increasing volumes of samples lead to high training and validation accuracy, but utilising all possible features lead to an situation where the model was overfit or testing data incorrectly populated.</p>
 </div>
 
 
